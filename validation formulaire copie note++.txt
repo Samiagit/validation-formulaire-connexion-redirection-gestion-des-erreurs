@@ -1,0 +1,278 @@
+<?php
+// Include config file
+require_once "config.php";
+
+// Define variables and initialize with empty values
+$Prénom = $Prénompère = $Nom = $NumCIN = $Numtél = $Adresse = $Email = $Fonction = $typecompte = $typeutilisateur = $saisirMP = $confirm_saisirMP = "" ;
+$Prénom_err = $NumCIN_err = $Numtél_err = $Email_err = $saisirMP_Err = $confirm_saisirMP_Err = "";
+ 
+// Processing form data when form is submitted
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+
+    // Validation Prénom
+    if(empty(trim($_POST["Prénom"]))){
+        $Prénom= "entrer votre Prénom";
+    } 
+    else{
+        // Prepare a select statement
+        $sql = "SELECT id FROM users WHERE Prénom= ?";
+        if($stmt = mysqli_prepare($link, $sql)){
+            // Bind variables to the prepared statement as parameters
+            mysqli_stmt_bind_param($stmt, "s", $param_Prénom);
+            
+            // Set parameters
+            $param_Prénom= trim($_POST["Prénom"]);
+             // Attempt to execute the prepared statement
+             if(mysqli_stmt_execute($stmt)){
+                /* store result */
+                mysqli_stmt_store_result($stmt);
+                
+                if(mysqli_stmt_num_rows($stmt) == 1){
+                    $Prénom_err = "ce Prénom est déjà utilisé";
+                } else{
+                    $Prénom= trim($_POST["Prénom"]);
+                }
+            } else{
+                echo "échec,essayer plus tard";
+            }
+
+            // Close statement
+            mysqli_stmt_close($stmt);
+        }
+    }
+     // Validation NumCIN
+     if(empty(trim($_POST["NumCIN"]))){
+        $NumCIN_err = "entrer NumCIN.";     
+    } elseif(strlen(trim($_POST["NumCIN"])) < 8){
+        $NumCIN_err = "NumCIN doit avoir 8 numéro.";
+    } else{
+        $NumCIN = trim($_POST["NumCIN"]);
+    }
+    // Validation NumTél
+    if(empty(trim($_POST["NumTél"]))){
+        $NumTél_err = "entrer NumTél.";     
+    } elseif(strlen(trim($_POST["NumTél"])) < 8){
+        $NumTél_err = "NumTél doit avoir 8 numéro.";
+    } else{
+        $Numtél = trim($_POST["NumTél"]);
+    }
+    // Validation Email
+    if(empty(trim($_POST["Email"]))){
+        $Email_err ="entrer Email.";
+    } else{
+        $Email = trim($_POST["Email"]);
+    }
+    // Validation saisirMP
+       if(empty(trim($_POST["saisirMP"]))){
+        $saisirMP_err = "SVP entrer saisirMP.";     
+    } elseif(strlen(trim($_POST["saisirMP"])) < 6){
+        $saisirMP_err = "saisirMP doit avoir au maximum 6 caractères.";
+    } else{
+        $saisirMP = trim($_POST["saisirMP"]);
+    }
+    
+   // validation confirm-saisirMP
+    if(empty(trim($_POST["confirm_saisirMP"]))){
+        $confirm_saisirMP_err = "SVP confirmer saisirMP.";     
+    } else{
+        $confirm_saisirMP = trim($_POST["confirm_saisirMP"]);
+        if(empty($saisirMP_err) && ($saisirMP != $confirm_saisirMP)){
+            $confirm_saisirMP_err = "";
+        }
+    }
+    
+    // Check input errors before inserting in database
+    if(empty($NumTél_err) && empty($Email_err) && empty($saisirMP_err) && empty($confirm_saisirMP_err)){
+        
+        // Prepare an insert statement
+        $sql = "INSERT INTO users (NumTél,Email, saisirMP) VALUES (?,?,?)";
+         
+        if($stmt = mysqli_prepare($link, $sql)){
+            // Bind variables to the prepared statement as parameters
+            mysqli_stmt_bind_param($stmt, "ss", $param_NumTél, $param_Email, $param_CQR, $param_saisirMP);
+            
+            // Set parameters
+        
+            $param_NumTél = $Numtél;
+            $param_Email = $Email;
+            $param_saisirMP = saisirMP_hash($saisirMP, saisirMP_DEFAULT); // Creates a saisirMP hash
+            
+            // Attempt to execute the prepared statement
+            if(mysqli_stmt_execute($stmt)){
+                // Redirect to login page
+                header("location: login.html");
+                exit(); // Assurez-vous de terminer le script après la redirection
+            } else{
+                echo "Oops! Something went wrong. Please try again later.";
+            }
+
+            // Close statement
+            mysqli_stmt_close($stmt);
+        }
+    }
+      
+     //Validation des cases à cocher  
+     if  (!isset( $_POST [ 'acceptation' ])){  
+        $agreeErr  =  "Acceptez les conditions d'utilisation avant de valider." ;  
+}  autre  {  
+    $valider = input_data( $_POST [ "acceptation" ]);  
+}    
+fonction  input_data( $data ) {  
+$données  = trim( $données );  
+$data  =  bandes obliques ( $data );  
+$data  = htmlspecialchars( $data );  
+renvoyer $données ;   
+}  
+  
+    // Validate formular
+   
+   
+    // Close connection
+    mysqli_close($link);
+}
+?>
+<?php
+// Vérification du formulaire soumis
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Récupération des données du formulaire
+   $Prénom = $_POST['Prénom']; $Nom = $_POST['Nom']; $Numtél = $_POST['NumTél']; $Email = $_POST['Email']; $SaisirMP = $_POST['SaisirMP']; $confirm_saisirMP = $_POST['confirm_SaisirMP'];
+
+    // Validation de l'adresse e-mail
+    if (!filter_var($Email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Adresse e-mail invalide";
+    } else {
+        // Génération d'un lien de vérification unique
+        $verificationLink = uniqid();
+
+        // Envoi de l'e-mail avec le lien de vérification
+        $to = $Email;
+        $subject = "Vérification d'adresse e-mail";
+        $message = "Cliquez sur le lien suivant pour vérifier votre adresse e-mail : http://file:///C:/xampp/htdocs/ebanking/page%20vérification.htm/verification .php?link=$verificationLink";
+        $headers = "From: votreadresse@example.com";
+
+        // Envoyer l'e-mail
+        if (mail($to, $subject, $message, $headers)) {
+            $success = "Un lien de vérification a été envoyé à votre adresse e-mail. Veuillez vérifier votre boîte de réception.";
+        } else {
+            $error = "Une erreur s'est produite lors de l'envoi du lien de vérification. Veuillez réessayer plus tard.";
+        }
+    }
+}
+?>
+<!DOCTYPE HTML>
+<html>
+<head>
+<style> .h {
+    align-content: center;
+    font-weight: bold;
+    text-align:center;
+    color:#00002E;
+} .button {
+    background-color:#153D6A;
+    border: none;
+    color: white;
+    padding: 12px 26px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+
+</style>
+</head>
+
+<body>
+<h1 class="h">BANQUE AVENIR TUNISIE(BAVT) </h1>
+<h2 style="text-align: left; margin-bottom: 9px; word-spacing: 15px;"><span style="font-size:larger;">
+     <li><a href="#">Accueil</a> <a href="#">A propos</a> <a href="#">Calendrier</a> <a href="#">Langues</a> </li></span></h2>
+
+<h2 style="font-weight: bold;color:#00002E; text-align:center;">S'inscrire</h2>
+<div>
+<form id="s'inscrire-form;" name="S'inscrire;" target="_parent;" method="POST;">
+    <input id="Prénom" name="Prénom" type="text" size="40" value="Prénom" tabindex="8" maxlength="40"> <input id="Prén" name="Prén" type="text" size="40" value="PréPrénompère" tabindex="8" maxlength="40">
+    <input id="Nom" name="Nom" type="text" size="40" value="Nom" tabindex="8" maxlength="40"> <input id="Num" name="Num" type="text" size="40" value="Num CIN" tabindex="8" maxlength="40">
+    <input id="Num" name="Num" type="text" size="40" value="Num téléphone" tabindex="8" maxlength="40"> <input id="ADR" name="ADR" type="text" size="40" value="Adresse" tabindex="8" maxlength="40">
+    <input id="Email" name="Email" type="text" size="40" value="E-mail" tabindex="8" maxlength="40"> <input id="Fon" name="Fon" type="text" size="40" value="Fonction" tabindex="8" maxlength="40"> <br>
+    <select id="type" name="Type" size="1"style=maxlength:"40">
+<option selected="selected">Type compte</option> 
+<option>Epargne</option>
+<option>courant</option>
+<option>Bloqué</option>
+</select> 
+<select id="util" name="util" size="l" style=maxlength:"40">
+<option selected="selected">type utilisateur</option>
+<option>Admin</option>
+<option>client</option>
+</select><br>
+<input type="password" name="MP" value="saisir mot de passe" tabindex="8" maxlength="40" > <input type="password" name="MP" value="confirm_saisir mot de passe" tabindex="8" maxlength="40">
+</form>
+</div>
+<br>
+<p style="text-align:justify"><input id="ACCEPT" name="acceptation" type="checkbox" value="Acceptez les conditions d'utilisation avant de valider" tabindex="1" checked="checked">
+Acceptez les conditions d'utilisation avant de valider 
+<a href="file:///C:/xampp/htdocs/ebanking/page%20vérification.htm"><input type="button" class="button" value="VALIDER" ></a></p>
+<p><a href="file:///C:/xampp/htdocs/ebanking/Page%20login.html">Se connecter</a></p>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('sinscrire-form').addEventListener('VALIDER', function(event) {
+        // Récupérer les valeurs des champs
+        var prenom = document.getElementById('Prénom').value;
+        var email = document.getElementById('Email').value;
+        var saisirMP = document.getElementById('saisirMP').value;
+        var confirmSaisirMP = document.getElementById('confirm_saisirMP').value;
+
+        // Validation des champs obligatoires
+        if (prenom === '' || email === '' || saisirMP === '' || confirmSaisirMP === '') {
+            alert('Veuillez remplir tous les champs obligatoires.');
+            event.preventDefault(); // Empêcher l'envoi du formulaire
+            return;
+        }
+
+        // Validation de l'adresse e-mail
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Veuillez entrer une adresse e-mail valide.');
+            event.preventDefault(); // Empêcher l'envoi du formulaire
+            return;
+        }
+
+        // Validation du mot de passe et de sa confirmation
+        if (saisirMP !== confirmSaisirMP) {
+            alert('Les mots de passe ne correspondent pas.');
+            event.preventDefault(); // Empêcher l'envoi du formulaire
+            return;
+        }
+    });
+});
+</script>
+
+<?php  
+    if (isset( $_POST [ 'VALIDER' ])) {  
+    if ( $Prénom_err  ==  ""  && $Prénompère_err == "" && $Nom_err == "" &&  $Numcin_err == "" &&  $Numtél_err =="" && $Email_err  ==  ""  &&  $Fonction_err  ==  ""   &&  $typecompte_err  ==  "" && $typeutilisateur_err == "") {  
+        echo "<h3 color = #FF0001> <b>Vous vous êtes inscrit avec succès.</b> </h3>" ;   
+        echo "<h2>Votre entrée :</h2>" ;   
+        echo "Prénom: "  . $Prénom;   
+        écho <br> ; 
+        echo "Nom : " . $Nom;
+        écho "<br>"  
+        echo "E-mail : "  . $Email ;   
+        écho "<br>" ;   
+        echo "Num téléphone : "  . $Numtél ;   
+        écho "<br>" ;   
+        echo "type compte : "  . $typecompte ; 
+        écho "<br>"
+        echo "type utilisateur : " . $typeutilisateur ;
+        écho "<br>" ;
+        echo "saisir MP : " . $saisirMP ;
+        
+    }  autre  {  
+        echo "<h3> <b>Vous n'avez pas rempli correctement le formulaire.</b> </h3>" ;   
+    }  
+    }  
+?>  
+
+</body>
+
+</html>
